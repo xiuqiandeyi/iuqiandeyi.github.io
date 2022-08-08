@@ -60,4 +60,25 @@
 <p>以上只是很小的一部分，还有大量的就靠你们自己去采坑了</p>
 ]]></content>
   </entry>
+  <entry>
+    <title>聊聊Http的实体数据</title>
+    <url>/2022/08/08/Http%E7%9A%84%E5%AE%9E%E4%BD%93%E6%95%B0%E6%8D%AE/</url>
+    <content><![CDATA[<p>我们都知道在TCP/IP的协议栈里，传输数据基本上都是以一种 <code>Header+Body</code>的格式。有时候Body可能没有，就只有Header。由于诸如TCP、UDP等都是在传输层工作的，因此他们并不会关注Body的数据类型是什么，它们的主要任务就是只要把数据发送到对方即完成任务。而对于HTTP协议而言，它却不是这样的，因为其作用于应用层。</p>
+<span id="more"></span>
+<p>因此对它而言，数据到达后工作才完成一般，因为其还要和上层应用说明这个是什么样的数据，否则上层应用就会不知道怎么去做。于是HTTP就从<code>MIME</code>(多用途互联网邮件扩展)标准规范中借用了部分，用来标记Body的数据类型，这就是 <code>MIME type</code>。</p>
+<h5 id="1、数据类型使用的头字段-MIME-type-Encoding-type"><a href="#1、数据类型使用的头字段-MIME-type-Encoding-type" class="headerlink" title="1、数据类型使用的头字段(MIME type + Encoding type)"></a>1、数据类型使用的头字段(MIME type + Encoding type)</h5><p>在HTTP协议中, 为了使浏览器和服务器能够准确识别出Body的类型，因此定义了两个Accept(请求字段)和两个Content(实体头字段)用于客户端和服务器进行内容协商。即客户端使用Accept告诉服务端希望接收到什么样的数据类型，服务端使用Content告诉客户端实际是发送了什么样的数据。</p>
+<h6 id="Accept：其标记的是客户端可以理解的MIME-type-通常用逗号隔开，例如如下设置："><a href="#Accept：其标记的是客户端可以理解的MIME-type-通常用逗号隔开，例如如下设置：" class="headerlink" title="Accept：其标记的是客户端可以理解的MIME type,通常用逗号隔开，例如如下设置："></a>Accept：其标记的是客户端可以理解的<code>MIME type</code>,通常用逗号隔开，例如如下设置：</h6><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Accept: text/html,application/xml,image/webp,image/png</span><br></pre></td></tr></table></figure>
+<p>这就告诉服务器：客户端能够识别HTML、XML的文本内容以及webp和png的图片内容，你只要传这四类格式的数据就行。而相应的，服务器在接收到这个后,就会会在响应报文里用头字段Content-Type字段告<br>诉实体数据的真实类型：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Content-Type: text/html</span><br><span class="line">Content-Type: image/png</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+<p>这样当浏览器看到返回的报文里的类型如果是<code>text/html</code>，那其就知道是HTML文件，就会调用引擎渲染出页面；看到返回的报文里的类型如果是<code>image/png</code>就知道是一个PNG的图像文件，就会在页面上显示出图像。这样就很争取的识别了Body实体数据。</p>
+<h6 id="Accept-Encoding：所标记的是客户端支持的压缩格式（gzip、deflate-br），服务器可以选择其中一种来压缩数据，实际使用的时候压缩格式放在响应头字段Content-Encoding里-用逗号隔开，最前边的优先级高，以此类推"><a href="#Accept-Encoding：所标记的是客户端支持的压缩格式（gzip、deflate-br），服务器可以选择其中一种来压缩数据，实际使用的时候压缩格式放在响应头字段Content-Encoding里-用逗号隔开，最前边的优先级高，以此类推" class="headerlink" title="Accept-Encoding：所标记的是客户端支持的压缩格式（gzip、deflate, br），服务器可以选择其中一种来压缩数据，实际使用的时候压缩格式放在响应头字段Content-Encoding里,用逗号隔开，最前边的优先级高，以此类推"></a>Accept-Encoding：所标记的是客户端支持的压缩格式（gzip、deflate, br），服务器可以选择其中一种来压缩数据，实际使用的时候压缩格式放在响应头字段Content-Encoding里,用逗号隔开，最前边的优先级高，以此类推</h6><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Accept-Encoding: gzip, deflate, br</span><br><span class="line">Content-Encoding: gzip</span><br></pre></td></tr></table></figure>
+<p>当然这两个字段并不是必须的，可以省略的，如果客户端在请求报文里没有设置Accept-Encoding字段，则表示客户端不支持压缩数据；同样的如果服务端的响应报文里没有Content-Encoding字段，则表示响应数据没有被压缩。</p>
+<h5 id="2、语言类型与编码"><a href="#2、语言类型与编码" class="headerlink" title="2、语言类型与编码"></a>2、语言类型与编码</h5><p>由于互联网遍布全球这就使得不同国家不同地区的人使用了很多不同的语言，虽然服务端都响应的都是<code>text/html</code>，但如何让浏览器显示出的都能让每个上网的人都可理解可阅读的语言文字呢？因而HTTP 采用了与数据类型相似的解决方案，又引入了两个概念：</p><h6>语言类型与字符集</h6><br>所谓的语言类型。简单一点就是人类使用的自然语言，例如英语、汉语、日语等，而这些自然语言可能还有下属的地区性方言（比如汉语下边还有蒙古语等），因此在需要明确区分的时候使用<code>-</code>来表示。比如：<code>en</code>表示任意的英语，<code>en-US</code>表示美式英语，<code>en-GB</code>表示英式英语，而<code>zh-CN</code>就表示我们最常使用的汉语。事实上关于自然语言的计算机处理还有一个更麻烦的东西叫做<code>字符集</code>。在计算机发展的早期，由于没有统一的标准，因此产生了许多字符编码方式来处理文字，我们说熟知的如<code>ASCII、GBK、BIG5</code>等。这就使得很多时候可能是同样的一段文字，用<code>GBK</code>编码显示正常，而换成<code>ASCII</code>编码后可能就会变得一团糟。所以后来为了统一，就产生了<code>UTF-8</code>，它把世界上所有的语言都容纳在同一种编码方案里，这也就使得其成为了互联网上的标准字符集。<p></p>
+<p>在HTTP协议中同样的使用Accept请求头字段和Content实体头字段，用于客户端和服务器就语言与编码进行协商。在客户端通过<code>Accept-Language</code>字段标记客户端可理解的自然语言,其可以用逗号进行分割列出多个类型</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Accept-Language: zh-CN, zh, en</span><br></pre></td></tr></table></figure>
+<p>上边所示的这个请求头会告诉服务器：客户端可以使用汉语文字、汉语方言以及英文。但是最好是优先使用汉语文字，如果没有就用其他的汉语方言，如果还没有就给英文。相应的，服务器就会在响应报文里用头字段<code>Content-Language</code>告诉客户端实体数据使用的实际语言类型，这里就优先返回了汉语文字</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Content-Language: zh-CN</span><br></pre></td></tr></table></figure>
+<p>上边说我们说到的是语言类型，没有说字符集，实际上字符集在HTTP里使用的请求头字段是<code>Accept-Charset</code>，但响应头里却没有对应的<code>Content-Charset</code>，而是在<code>Content-Type</code>字段的数据类型后面用<code>charset=xxx</code>来表示。由于现在的浏览器都支持多种字符集，因此通常不会发送<code>Accept-Charset</code>，而服务器也不会发送<code>ContentLanguage</code>，使用的语言基本上是可以由字符集推断出来，所以在请求头里一般只会有<code>Accept-Language</code>字段，响应头里只会有<code>Content-Type</code>。<br>以上就是简单的梳理了一下HTTP中的实体数据</p>
+]]></content>
+  </entry>
 </search>
